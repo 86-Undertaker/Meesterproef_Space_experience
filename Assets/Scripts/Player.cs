@@ -48,22 +48,19 @@ public class Player : MonoBehaviour
         {
             move += transform.right * speed;
         }
-        transform.Rotate(new Vector3(0, Input.GetAxis("Mouse X") * sensitivityX, 0) * Time.deltaTime);
-        transform.GetChild(0).Rotate(new Vector3(-Input.GetAxis("Mouse Y") * sensitivityY, 0, 0) * Time.deltaTime);
-        transform.eulerAngles = new Vector3(Mathf.Clamp(transform.eulerAngles.x, -45f, 45f), transform.eulerAngles.y, 0);
         _rb.AddForce(move, ForceMode.Impulse);
     }
 
     private void Camera()
     {
         float mouseX = Input.GetAxis("Mouse X");
-        _mouseY -= Input.GetAxis("Mouse Y");
+        _mouseY -= Input.GetAxis("Mouse Y") * sensitivityY * Time.deltaTime;
         
         // Clamp the vertical rotation of the camera so you can not do a 360
         _mouseY = Mathf.Clamp(_mouseY, -45.0f, 45.0f);
 
         // Rotate the player around its Y axis
-        transform.Rotate(Quaternion.Euler(0, mouseX, 0).eulerAngles);
+        transform.Rotate(Quaternion.Euler(0, mouseX * sensitivityX * Time.deltaTime, 0).eulerAngles);
 
         // Rotate the camera around its X axis
         transform.GetChild(0).transform.localRotation = Quaternion.Euler(_mouseY, 0, 0);
@@ -71,7 +68,7 @@ public class Player : MonoBehaviour
 
     void Interact()
     {
-        if(Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, 2f))
+        if(Physics.Raycast(transform.position, transform.GetChild(0).forward, out RaycastHit hit, 6f))
         {
             if(hit.collider.CompareTag("Spaceship"))
             {
@@ -79,8 +76,12 @@ public class Player : MonoBehaviour
                 root.GetComponent<Spaceship>().enabled = true;
                 transform.position = root.transform.GetChild(0).position;
                 transform.parent = root.gameObject.transform;
-                transform.rotation = root.transform.rotation;
+                transform.localRotation = Quaternion.Euler(0, 0, 0);
+                transform.GetChild(0).localRotation = Quaternion.Euler(0, 0, 0);
                 _locked = true; 
+                Destroy(_rb);
+                GetComponent<CapsuleCollider>().enabled = false;
+                root.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeRotation;
             }
         }
     }
@@ -89,6 +90,10 @@ public class Player : MonoBehaviour
     {
         _locked = false;
         transform.parent = null;
+        transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
         transform.position += transform.right * 2;
+        _rb = gameObject.AddComponent<Rigidbody>();
+        _rb.constraints = RigidbodyConstraints.FreezeRotation;
+        GetComponent<CapsuleCollider>().enabled = true;
     }
 }
